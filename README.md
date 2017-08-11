@@ -8,6 +8,7 @@ ReliableNetcode.NET provides a simple and easy-to-use reliability layer designed
 * Lightweight packet acking and packet resending
 * Supports messages up to about 16kB large using automatic message fragmentation and reassembly.
 * Simple congestion control changes the packet send rate according to round-trip-time.
+* GC-friendly for maximum performance.
 
 # Usage
 All of the API is provided under the `ReliableNetcode` namespace.
