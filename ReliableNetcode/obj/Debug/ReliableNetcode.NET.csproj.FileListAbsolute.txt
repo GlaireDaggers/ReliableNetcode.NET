@@ -1,0 +1,5 @@
+D:\Projects\NET\ReliableNetcode.NET\ReliableNetcode\bin\Debug\ReliableNetcode.dll
+D:\Projects\NET\ReliableNetcode.NET\ReliableNetcode\bin\Debug\ReliableNetcode.pdb
+D:\Projects\NET\ReliableNetcode.NET\ReliableNetcode\obj\Debug\ReliableNetcode.NET.csprojResolveAssemblyReference.cache
+D:\Projects\NET\ReliableNetcode.NET\ReliableNetcode\obj\Debug\ReliableNetcode.dll
+D:\Projects\NET\ReliableNetcode.NET\ReliableNetcode\obj\Debug\ReliableNetcode.pdb
