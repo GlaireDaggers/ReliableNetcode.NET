@@ -12,7 +12,8 @@ ReliableNetcode.NET provides a simple and easy-to-use reliability layer designed
 
 # Usage
 All of the API is provided under the `ReliableNetcode` namespace.
-Usage is really simple. Create a new instance of `ReliableEndpoint`:
+
+Usage is really simple. First, to create a new instance of `ReliableEndpoint`:
 
 ```c#
 var reliableEndpoint = new ReliableEndpoint();
