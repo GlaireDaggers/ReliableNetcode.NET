@@ -1,5 +1,6 @@
 # ReliableNetcode.NET
-A pure managed C# socket agnostic reliability layer inspired by reliable.io and yojimbo
+A pure managed C# socket agnostic reliability layer inspired by reliable.io and yojimbo.
+
 ReliableNetcode.NET provides a simple and easy-to-use reliability layer designed for use in games built on unreliable UDP connections. It is a great fit for use with [Netcode.IO.NET](https://github.com/KillaMaaki/Netcode.IO.NET), my C# port of Glenn Fiedler's secure UDP communication protocol, but it can also be used with any other system you want.
 
 # Features
