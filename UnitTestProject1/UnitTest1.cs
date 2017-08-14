@@ -32,7 +32,7 @@ namespace UnitTestProject1
 				endpoint1.ReceivePacket(buffer, size);
 			};
 
-			for (int i = 0; i < 10; i++)
+			for (int i = 0; i < 100; i++)
 			{
 				sentPackets.Add((byte)i);
 				byte[] test = new byte[256];

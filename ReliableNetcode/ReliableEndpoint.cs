@@ -100,9 +100,7 @@ namespace ReliableNetcode
 		/// </summary>
 		public void ReceivePacket(byte[] buffer, int bufferLength)
 		{
-			byte prefixByte = buffer[0];
-			int channel = (prefixByte >> 6);
-
+			int channel = buffer[1];
 			messageChannels[channel].ReceivePacket(buffer, bufferLength);
 		}
 

@@ -90,7 +90,7 @@ namespace ReliableNetcode
 		{
 			this.config = config;
 			this.time = time;
-			
+
 			this.sentPackets = new SequenceBuffer<SentPacketData>(config.SentPacketBufferSize);
 			this.receivedPackets = new SequenceBuffer<ReceivedPacketData>(config.ReceivedPacketBufferSize);
 			this.fragmentReassembly = new SequenceBuffer<FragmentReassemblyData>(config.FragmentReassemblyBufferSize);
@@ -104,7 +104,7 @@ namespace ReliableNetcode
 		public void Reset()
 		{
 			this.sequence = 0;
-			
+
 			for (int i = 0; i < config.FragmentReassemblyBufferSize; i++)
 			{
 				FragmentReassemblyData reassemblyData = fragmentReassembly.AtIndex(i);
@@ -248,14 +248,19 @@ namespace ReliableNetcode
 			}
 		}
 
-		public bool NeedsAck()
+		public void SendAck(byte channelID)
 		{
 			ushort ack;
 			uint ackBits;
 
 			receivedPackets.GenerateAckBits(out ack, out ackBits);
 
-			return ackBits != 0;
+			byte[] transmitData = BufferPool.GetBuffer(16);
+			int headerBytes = PacketIO.WriteAckPacket(transmitData, channelID, ack, ackBits);
+
+			config.TransmitPacketCallback(transmitData, headerBytes);
+
+			BufferPool.ReturnBuffer(transmitData);
 		}
 
 		public ushort SendPacket(byte[] packetData, int length, byte channelID)
@@ -321,7 +326,7 @@ namespace ReliableNetcode
 						int bytesToCopy = config.FragmentSize;
 						if (qpos + bytesToCopy > length)
 							bytesToCopy = length - qpos;
-						
+
 						for (int i = 0; i < bytesToCopy; i++)
 							writer.Write(packetData[qpos++]);
 
@@ -352,54 +357,59 @@ namespace ReliableNetcode
 				ushort ack;
 				uint ackBits;
 
-				int packetHeaderBytes = PacketIO.ReadPacketHeader(packetData, 0, bufferLength, out sequence, out ack, out ackBits);
+				byte channelID;
 
-				// stale packet, ignore
-				if (!receivedPackets.TestInsert(sequence))
-					return;
-				
-				ByteBuffer tempBuffer = ObjPool<ByteBuffer>.Get();
-				tempBuffer.SetSize(bufferLength - packetHeaderBytes);
-				tempBuffer.BufferCopy(packetData, packetHeaderBytes, 0, tempBuffer.Length);
+				int packetHeaderBytes = PacketIO.ReadPacketHeader(packetData, 0, bufferLength, out channelID, out sequence, out ack, out ackBits);
+				bool isStale = !receivedPackets.TestInsert(sequence);
 
-				// process packet
-				config.ProcessPacketCallback(sequence, tempBuffer.InternalBuffer, tempBuffer.Length);
-
-				// add to received buffer
-				ReceivedPacketData receivedPacketData = receivedPackets.Insert(sequence);
-				receivedPacketData.time = this.time;
-				receivedPacketData.packetBytes = (uint)(config.PacketHeaderSize + bufferLength);
-
-				for (int i = 0; i < 32; i++)
+				if (!isStale && (prefixByte & 0x80) == 0)
 				{
-					if ((ackBits & 1) != 0)
+					ByteBuffer tempBuffer = ObjPool<ByteBuffer>.Get();
+					tempBuffer.SetSize(bufferLength - packetHeaderBytes);
+					tempBuffer.BufferCopy(packetData, packetHeaderBytes, 0, tempBuffer.Length);
+
+					// process packet
+					config.ProcessPacketCallback(sequence, tempBuffer.InternalBuffer, tempBuffer.Length);
+
+					// add to received buffer
+					ReceivedPacketData receivedPacketData = receivedPackets.Insert(sequence);
+					receivedPacketData.time = this.time;
+					receivedPacketData.packetBytes = (uint)(config.PacketHeaderSize + bufferLength);
+
+					ObjPool<ByteBuffer>.Return(tempBuffer);
+				}
+
+				if (!isStale || (prefixByte & 0x80) != 0)
+				{
+					for (int i = 0; i < 32; i++)
 					{
-						ushort ack_sequence = (ushort)(ack - i);
-						SentPacketData sentPacketData = sentPackets.Find(ack_sequence);
-
-						if (sentPacketData != null && !sentPacketData.acked)
+						if ((ackBits & 1) != 0)
 						{
-							sentPacketData.acked = true;
+							ushort ack_sequence = (ushort)(ack - i);
+							SentPacketData sentPacketData = sentPackets.Find(ack_sequence);
 
-							if (config.AckPacketCallback != null)
-								config.AckPacketCallback(ack_sequence);
+							if (sentPacketData != null && !sentPacketData.acked)
+							{
+								sentPacketData.acked = true;
 
-							float rtt = (float)(this.time - sentPacketData.time) * 1000.0f;
-							if ((this.rtt == 0f && rtt > 0f) || Math.Abs(this.rtt - rtt) < 0.00001f)
-							{
-								this.rtt = rtt;
-							}
-							else
-							{
-								this.rtt += (rtt - this.rtt) * config.RTTSmoothFactor;
+								if (config.AckPacketCallback != null)
+									config.AckPacketCallback(ack_sequence);
+
+								float rtt = (float)(this.time - sentPacketData.time) * 1000.0f;
+								if ((this.rtt == 0f && rtt > 0f) || Math.Abs(this.rtt - rtt) < 0.00001f)
+								{
+									this.rtt = rtt;
+								}
+								else
+								{
+									this.rtt += (rtt - this.rtt) * config.RTTSmoothFactor;
+								}
 							}
 						}
-					}
 
-					ackBits >>= 1;
+						ackBits >>= 1;
+					}
 				}
-				
-				ObjPool<ByteBuffer>.Return(tempBuffer);
 			}
 			else
 			{

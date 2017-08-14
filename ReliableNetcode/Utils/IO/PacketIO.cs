@@ -18,9 +18,9 @@ namespace ReliableNetcode.Utils
 			return SequenceGreaterThan(s2, s1);
 		}
 
-		public static int ReadPacketHeader(byte[] packetBuffer, int offset, int bufferLength, out ushort sequence, out ushort ack, out uint ackBits)
+		public static int ReadPacketHeader(byte[] packetBuffer, int offset, int bufferLength, out byte channelID, out ushort sequence, out ushort ack, out uint ackBits)
 		{
-			if (bufferLength < 3)
+			if (bufferLength < 4)
 				throw new FormatException("Buffer too small for packet header");
 
 			using (var reader = ByteArrayReaderWriter.Get(packetBuffer))
@@ -33,7 +33,16 @@ namespace ReliableNetcode.Utils
 					throw new InvalidOperationException("Header does not indicate regular packet");
 				}
 
-				sequence = reader.ReadUInt16();
+				channelID = reader.ReadByte();
+
+				// ack packets don't have sequence numbers
+				if ((prefixByte & 0x80) == 0)
+					sequence = reader.ReadUInt16();
+				else
+				{
+					sequence = 0;
+					Console.WriteLine("Received ack packet");
+				}
 
 				if ((prefixByte & (1 << 5)) != 0)
 				{
@@ -108,8 +117,7 @@ namespace ReliableNetcode.Utils
 				if (prefixByte != 1)
 					throw new FormatException("Packet header indicates non-fragment packet");
 
-				channelID = (byte)(prefixByte >> 6);
-
+				channelID = reader.ReadByte();
 				sequence = reader.ReadUInt16();
 
 				fragmentID = reader.ReadByte();
@@ -127,9 +135,11 @@ namespace ReliableNetcode.Utils
 				ushort packetAck = 0;
 				uint packetAckBits = 0;
 
+				byte packetChannelID = 0;
+
 				if (fragmentID == 0)
 				{
-					int packetHeaderBytes = ReadPacketHeader(packetBuffer, Defines.FRAGMENT_HEADER_BYTES, bufferLength, out packetSequence, out packetAck, out packetAckBits);
+					int packetHeaderBytes = ReadPacketHeader(packetBuffer, Defines.FRAGMENT_HEADER_BYTES, bufferLength, out packetChannelID, out packetSequence, out packetAck, out packetAckBits);
 					if (packetSequence != sequence)
 						throw new FormatException("Bad packet sequence in fragment");
 
@@ -146,6 +156,45 @@ namespace ReliableNetcode.Utils
 					throw new FormatException("Fragment size invalid");
 
 				return (int)reader.ReadPosition - offset;
+			}
+		}
+
+		public static int WriteAckPacket(byte[] packetBuffer, byte channelID, ushort ack, uint ackBits)
+		{
+			using (var writer = ByteArrayReaderWriter.Get(packetBuffer))
+			{
+				byte prefixByte = 0x80; // top bit set, indicates ack packet
+
+				if ((ackBits & 0x000000FF) != 0x000000FF)
+					prefixByte |= (1 << 1);
+
+				if ((ackBits & 0x0000FF00) != 0x0000FF00)
+					prefixByte |= (1 << 2);
+
+				if ((ackBits & 0x00FF0000) != 0x00FF0000)
+					prefixByte |= (1 << 3);
+
+				if ((ackBits & 0xFF000000) != 0xFF000000)
+					prefixByte |= (1 << 4);
+
+				writer.Write(prefixByte);
+				writer.Write(channelID);
+
+				writer.Write(ack);
+
+				if ((ackBits & 0x000000FF) != 0x000000FF)
+					writer.Write((byte)((ackBits & 0x000000FF)));
+
+				if ((ackBits & 0x0000FF00) != 0x0000FF00)
+					writer.Write((byte)((ackBits & 0x0000FF00) >> 8));
+
+				if ((ackBits & 0x00FF0000) != 0x00FF0000)
+					writer.Write((byte)((ackBits & 0x00FF0000) >> 16));
+
+				if ((ackBits & 0xFF000000) != 0xFF000000)
+					writer.Write((byte)((ackBits & 0xFF000000) >> 24));
+
+				return (int)writer.WritePosition;
 			}
 		}
 
@@ -172,10 +221,9 @@ namespace ReliableNetcode.Utils
 					sequenceDiff += 65536;
 				if (sequenceDiff <= 255)
 					prefixByte |= (1 << 5);
-
-				prefixByte |= (byte)( (channelID & 0x03) << 6 );
-
+				
 				writer.Write(prefixByte);
+				writer.Write(channelID);
 				writer.Write(sequence);
 
 				if (sequenceDiff <= 255)

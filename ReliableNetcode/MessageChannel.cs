@@ -348,18 +348,9 @@ namespace ReliableNetcode
 			}
 		}
 
-		private void sendEmptyMessage()
+		private void sendAckPacket()
 		{
-			ushort sequence = this.sequence++;
-
-			messagePacker.SetSize(messagePacker.Length + 4);
-			using (var writer = ByteArrayReaderWriter.Get(messagePacker.InternalBuffer))
-			{
-				writer.Write(sequence);
-				writeVariableLengthUShort((ushort)0, writer);
-			}
-
-			flushMessagePacker(false);
+			packetController.SendAck((byte)ChannelID);
 		}
 
 		private void writeVariableLengthUShort(ushort val, ByteArrayReaderWriter writer)
@@ -440,10 +431,10 @@ namespace ReliableNetcode
 				}
 			}
 
-			// if it has been 0.1 seconds since the last time we sent a message, send an empty non-acked message
+			// if it has been 0.1 seconds since the last time we sent a message, send an empty message
 			if (time - lastMessageSend >= 0.1)
 			{
-				sendEmptyMessage();
+				sendAckPacket();
 				lastMessageSend = time;
 			}
 
