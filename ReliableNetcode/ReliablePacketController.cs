@@ -248,6 +248,16 @@ namespace ReliableNetcode
 			}
 		}
 
+		public bool NeedsAck()
+		{
+			ushort ack;
+			uint ackBits;
+
+			receivedPackets.GenerateAckBits(out ack, out ackBits);
+
+			return ackBits != 0;
+		}
+
 		public ushort SendPacket(byte[] packetData, int length, byte channelID)
 		{
 			if (length > config.MaxPacketSize)

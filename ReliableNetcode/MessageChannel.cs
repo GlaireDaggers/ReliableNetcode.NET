@@ -176,6 +176,7 @@ namespace ReliableNetcode
 		private Queue<ByteBuffer> messageQueue = new Queue<ByteBuffer>();
 
 		private double lastBufferFlush;
+		private double lastMessageSend;
 		private double time;
 
 		private ushort oldestUnacked;
@@ -198,6 +199,7 @@ namespace ReliableNetcode
 
 			time = DateTime.Now.GetTotalSeconds();
 			lastBufferFlush = -1.0;
+			lastMessageSend = 0.0;
 			this.packetController = new ReliablePacketController(config, time);
 
 			this.congestionDisableInterval = 5.0;
@@ -214,6 +216,7 @@ namespace ReliableNetcode
 			this.ackBuffer.Reset();
 
 			this.lastBufferFlush = -1.0;
+			this.lastMessageSend = 0.0;
 
 			this.congestionControl = false;
 			this.lastCongestionSwitchTime = 0.0;
@@ -332,7 +335,7 @@ namespace ReliableNetcode
 
 			ushort sequence = this.sequence++;
 			var packet = sendBuffer.Insert(sequence);
-			
+
 			packet.time = -1.0;
 
 			packet.buffer.SetSize(bufferLength + 4);
@@ -340,12 +343,23 @@ namespace ReliableNetcode
 			{
 				writer.Write(sequence);
 
-				// todo: use variable length encoding here
-				//writer.Write((ushort)bufferLength);
 				writeVariableLengthUShort((ushort)bufferLength, writer);
-
 				writer.WriteBuffer(buffer, bufferLength);
 			}
+		}
+
+		private void sendEmptyMessage()
+		{
+			ushort sequence = this.sequence++;
+
+			messagePacker.SetSize(messagePacker.Length + 4);
+			using (var writer = ByteArrayReaderWriter.Get(messagePacker.InternalBuffer))
+			{
+				writer.Write(sequence);
+				writeVariableLengthUShort((ushort)0, writer);
+			}
+
+			flushMessagePacker(false);
 		}
 
 		private void writeVariableLengthUShort(ushort val, ByteArrayReaderWriter writer)
@@ -356,8 +370,8 @@ namespace ReliableNetcode
 			}
 
 			byte b1 = (byte)(val & 0x007F); // write the lowest 7 bits
-			byte b2 = (byte)(val >> 7);		// write remaining 8 bits
-			
+			byte b2 = (byte)(val >> 7);     // write remaining 8 bits
+
 			// if there's a second byte to write, set the continue flag
 			if (b2 != 0)
 			{
@@ -398,6 +412,9 @@ namespace ReliableNetcode
 				var packet = sendBuffer.Find(seq);
 				if (packet != null)
 				{
+					if (time - packet.time < 0.1)
+						continue;
+
 					bool packetFits = false;
 
 					if (packet.buffer.Length < config.FragmentThreshold)
@@ -411,24 +428,30 @@ namespace ReliableNetcode
 						flushMessagePacker();
 					}
 
-					if (time - packet.time >= 0.1)
-					{
-						packet.time = time;
+					packet.time = time;
 
-						int ptr = messagePacker.Length;
-						messagePacker.SetSize(messagePacker.Length + packet.buffer.Length);
-						messagePacker.BufferCopy(packet.buffer, 0, ptr, packet.buffer.Length);
+					int ptr = messagePacker.Length;
+					messagePacker.SetSize(messagePacker.Length + packet.buffer.Length);
+					messagePacker.BufferCopy(packet.buffer, 0, ptr, packet.buffer.Length);
 
-						tempList.Add(seq);
-					}
+					tempList.Add(seq);
+
+					lastMessageSend = time;
 				}
+			}
+
+			// if it has been 0.1 seconds since the last time we sent a message, send an empty non-acked message
+			if (time - lastMessageSend >= 0.1)
+			{
+				sendEmptyMessage();
+				lastMessageSend = time;
 			}
 
 			// flush any remaining messages in message packer
 			flushMessagePacker();
 		}
 
-		protected void flushMessagePacker()
+		protected void flushMessagePacker(bool bufferAck = true)
 		{
 			if (messagePacker.Length > 0)
 			{
@@ -487,10 +510,10 @@ namespace ReliableNetcode
 				{
 					// get message bytes and send to receive callback
 					ushort messageID = reader.ReadUInt16();
-
-					// todo: use variable length encoding here
-					//ushort messageLength = reader.ReadUInt16();
 					ushort messageLength = readVariableLengthUShort(reader);
+
+					if (messageLength == 0)
+						continue;
 
 					if (!receiveBuffer.Exists(messageID))
 					{

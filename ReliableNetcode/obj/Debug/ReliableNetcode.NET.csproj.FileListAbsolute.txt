@@ -3,3 +3,8 @@ D:\Projects\NET\ReliableNetcode.NET\ReliableNetcode\bin\Debug\ReliableNetcode.pd
 D:\Projects\NET\ReliableNetcode.NET\ReliableNetcode\obj\Debug\ReliableNetcode.NET.csprojResolveAssemblyReference.cache
 D:\Projects\NET\ReliableNetcode.NET\ReliableNetcode\obj\Debug\ReliableNetcode.dll
 D:\Projects\NET\ReliableNetcode.NET\ReliableNetcode\obj\Debug\ReliableNetcode.pdb
+D:\Git\ReliableNetcode.NET\ReliableNetcode\bin\Debug\ReliableNetcode.dll
+D:\Git\ReliableNetcode.NET\ReliableNetcode\bin\Debug\ReliableNetcode.pdb
+D:\Git\ReliableNetcode.NET\ReliableNetcode\obj\Debug\ReliableNetcode.NET.csprojResolveAssemblyReference.cache
+D:\Git\ReliableNetcode.NET\ReliableNetcode\obj\Debug\ReliableNetcode.dll
+D:\Git\ReliableNetcode.NET\ReliableNetcode\obj\Debug\ReliableNetcode.pdb
