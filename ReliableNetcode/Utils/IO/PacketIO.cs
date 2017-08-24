@@ -46,7 +46,7 @@ namespace ReliableNetcode.Utils
 
 				if ((prefixByte & (1 << 5)) != 0)
 				{
-					if (bufferLength < 3 + 1)
+					if (bufferLength < 2 + 1)
 					{
 						throw new FormatException("Buffer too small for packet header");
 					}
@@ -56,7 +56,7 @@ namespace ReliableNetcode.Utils
 				}
 				else
 				{
-					if (bufferLength < 3 + 2)
+					if (bufferLength < 2 + 2)
 					{
 						throw new FormatException("Buffer too small for packet header");
 					}

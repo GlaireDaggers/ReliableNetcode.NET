@@ -337,8 +337,11 @@ namespace ReliableNetcode
 			var packet = sendBuffer.Insert(sequence);
 
 			packet.time = -1.0;
+			
+			// ensure size for header
+			int varLength = getVariableLengthBytes((ushort)bufferLength);
+			packet.buffer.SetSize(bufferLength + 2 + varLength);
 
-			packet.buffer.SetSize(bufferLength + 4);
 			using (var writer = ByteArrayReaderWriter.Get(packet.buffer.InternalBuffer))
 			{
 				writer.Write(sequence);
@@ -351,6 +354,17 @@ namespace ReliableNetcode
 		private void sendAckPacket()
 		{
 			packetController.SendAck((byte)ChannelID);
+		}
+
+		private int getVariableLengthBytes(ushort val)
+		{
+			if (val > 0x7fff)
+			{
+				throw new ArgumentOutOfRangeException();
+			}
+			
+			byte b2 = (byte)(val >> 7);
+			return (b2 != 0) ? 2 : 1;
 		}
 
 		private void writeVariableLengthUShort(ushort val, ByteArrayReaderWriter writer)
@@ -489,7 +503,7 @@ namespace ReliableNetcode
 			}
 
 			if (allAcked)
-				oldestUnacked = (ushort)(this.sequence + 1);
+				oldestUnacked = this.sequence;
 		}
 
 		// process incoming packets and turn them into messages
