@@ -1,0 +1,5 @@
+D:\Git\ReliableNetcode.NET\ReliableNetcode\bin\Release\ReliableNetcode.dll
+D:\Git\ReliableNetcode.NET\ReliableNetcode\bin\Release\ReliableNetcode.pdb
+D:\Git\ReliableNetcode.NET\ReliableNetcode\obj\Release\ReliableNetcode.NET.csprojResolveAssemblyReference.cache
+D:\Git\ReliableNetcode.NET\ReliableNetcode\obj\Release\ReliableNetcode.dll
+D:\Git\ReliableNetcode.NET\ReliableNetcode\obj\Release\ReliableNetcode.pdb

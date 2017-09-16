@@ -41,7 +41,6 @@ namespace ReliableNetcode.Utils
 				else
 				{
 					sequence = 0;
-					Console.WriteLine("Received ack packet");
 				}
 
 				if ((prefixByte & (1 << 5)) != 0)
@@ -136,7 +135,7 @@ namespace ReliableNetcode.Utils
 				uint packetAckBits = 0;
 
 				byte packetChannelID = 0;
-
+                
 				if (fragmentID == 0)
 				{
 					int packetHeaderBytes = ReadPacketHeader(packetBuffer, Defines.FRAGMENT_HEADER_BYTES, bufferLength, out packetChannelID, out packetSequence, out packetAck, out packetAckBits);
@@ -202,48 +201,48 @@ namespace ReliableNetcode.Utils
 		{
 			using (var writer = ByteArrayReaderWriter.Get(packetBuffer))
 			{
-				byte prefixByte = 0;
+                byte prefixByte = 0;
 
-				if ((ackBits & 0x000000FF) != 0x000000FF)
-					prefixByte |= (1 << 1);
+                if ((ackBits & 0x000000FF) != 0x000000FF)
+                    prefixByte |= (1 << 1);
 
-				if ((ackBits & 0x0000FF00) != 0x0000FF00)
-					prefixByte |= (1 << 2);
+                if ((ackBits & 0x0000FF00) != 0x0000FF00)
+                    prefixByte |= (1 << 2);
 
-				if ((ackBits & 0x00FF0000) != 0x00FF0000)
-					prefixByte |= (1 << 3);
+                if ((ackBits & 0x00FF0000) != 0x00FF0000)
+                    prefixByte |= (1 << 3);
 
-				if ((ackBits & 0xFF000000) != 0xFF000000)
-					prefixByte |= (1 << 4);
+                if ((ackBits & 0xFF000000) != 0xFF000000)
+                    prefixByte |= (1 << 4);
 
-				int sequenceDiff = sequence - ack;
-				if (sequenceDiff < 0)
-					sequenceDiff += 65536;
-				if (sequenceDiff <= 255)
-					prefixByte |= (1 << 5);
-				
-				writer.Write(prefixByte);
-				writer.Write(channelID);
-				writer.Write(sequence);
+                int sequenceDiff = sequence - ack;
+                if (sequenceDiff < 0)
+                    sequenceDiff += 65536;
+                if (sequenceDiff <= 255)
+                    prefixByte |= (1 << 5);
 
-				if (sequenceDiff <= 255)
-					writer.Write((byte)sequenceDiff);
-				else
-					writer.Write(ack);
+                writer.Write(prefixByte);
+                writer.Write(channelID);
+                writer.Write(sequence);
 
-				if ((ackBits & 0x000000FF) != 0x000000FF)
-					writer.Write((byte)((ackBits & 0x000000FF)));
+                if (sequenceDiff <= 255)
+                    writer.Write((byte)sequenceDiff);
+                else
+                    writer.Write(ack);
 
-				if ((ackBits & 0x0000FF00) != 0x0000FF00)
-					writer.Write((byte)((ackBits & 0x0000FF00) >> 8));
+                if ((ackBits & 0x000000FF) != 0x000000FF)
+                    writer.Write((byte)((ackBits & 0x000000FF)));
 
-				if ((ackBits & 0x00FF0000) != 0x00FF0000)
-					writer.Write((byte)((ackBits & 0x00FF0000) >> 16));
+                if ((ackBits & 0x0000FF00) != 0x0000FF00)
+                    writer.Write((byte)((ackBits & 0x0000FF00) >> 8));
 
-				if ((ackBits & 0xFF000000) != 0xFF000000)
-					writer.Write((byte)((ackBits & 0xFF000000) >> 24));
+                if ((ackBits & 0x00FF0000) != 0x00FF0000)
+                    writer.Write((byte)((ackBits & 0x00FF0000) >> 16));
 
-				return (int)writer.WritePosition;
+                if ((ackBits & 0xFF000000) != 0xFF000000)
+                    writer.Write((byte)((ackBits & 0xFF000000) >> 24));
+
+                return (int)writer.WritePosition;
 			}
 		}
 	}

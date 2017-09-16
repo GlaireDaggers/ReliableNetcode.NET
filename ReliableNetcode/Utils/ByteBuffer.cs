@@ -53,9 +53,9 @@ namespace ReliableNetcode.Utils
 		}
 
 		public void BufferCopy(ByteBuffer source, int src, int dest, int length)
-		{
-			System.Buffer.BlockCopy(source._buffer, src, _buffer, dest, length);
-		}
+        {
+            System.Buffer.BlockCopy(source._buffer, src, _buffer, dest, length);
+        }
 
 		public byte this[int index]
 		{

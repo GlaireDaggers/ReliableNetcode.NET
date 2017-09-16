@@ -20,14 +20,14 @@ namespace ReliableNetcode.Utils
 		{
 			ByteArrayReaderWriter reader = null;
 
-			if (readerPool.Count > 0)
-			{
-				reader = readerPool.Dequeue();
-			}
-			else
-			{
-				reader = new ByteArrayReaderWriter();
-			}
+            lock (readerPool) {
+                if (readerPool.Count > 0) {
+                    reader = readerPool.Dequeue();
+                }
+                else {
+                    reader = new ByteArrayReaderWriter();
+                }
+            }
 
 			reader.SetStream(byteArray);
 			return reader;
@@ -38,7 +38,9 @@ namespace ReliableNetcode.Utils
 		/// </summary>
 		public static void Release(ByteArrayReaderWriter reader)
 		{
-			readerPool.Enqueue(reader);
+            lock (readerPool) {
+                readerPool.Enqueue(reader);
+            }
 		}
 
 		public long ReadPosition
