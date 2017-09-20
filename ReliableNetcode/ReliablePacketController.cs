@@ -37,7 +37,7 @@ namespace ReliableNetcode
             config.SentPacketBufferSize = 256;
             config.ReceivedPacketBufferSize = 256;
             config.FragmentReassemblyBufferSize = 64;
-            config.RTTSmoothFactor = 0.0025f;
+            config.RTTSmoothFactor = 0.25f;
             config.PacketLossSmoothingFactor = 0.1f;
             config.BandwidthSmoothingFactor = 0.1f;
             config.PacketHeaderSize = 28;

@@ -247,7 +247,7 @@ namespace ReliableNetcode
             // update congestion mode
             {
                 // conditions are bad if round-trip-time exceeds 250ms
-                bool conditionsBad = (this.packetController.RTT >= 0.25f);
+                bool conditionsBad = (this.packetController.RTT >= 250f);
 
                 // if conditions are bad, immediately enable congestion control and reset the congestion timer
                 if (conditionsBad) {
@@ -387,6 +387,10 @@ namespace ReliableNetcode
         protected List<ushort> tempList = new List<ushort>();
         protected void processSendBuffer()
         {
+            int numUnacked = 0;
+            for (ushort seq = oldestUnacked; PacketIO.SequenceLessThan(seq, this.sequence); seq++)
+                numUnacked++;
+
             for (ushort seq = oldestUnacked; PacketIO.SequenceLessThan(seq, this.sequence); seq++) {
                 // never send message ID >= ( oldestUnacked + bufferSize )
                 if (seq >= (oldestUnacked + 256))
