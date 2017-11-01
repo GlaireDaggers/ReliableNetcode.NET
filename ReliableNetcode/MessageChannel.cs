@@ -157,6 +157,14 @@ namespace ReliableNetcode
             }
         }
 
+        public float RTT => packetController.RTT;
+
+        public float PacketLoss => packetController.PacketLoss;
+
+        public float SentBandwidthKBPS => packetController.SentBandwidthKBPS;
+
+        public float ReceivedBandwidthKBPS => packetController.ReceivedBandwidthKBPS;
+
         private ReliableConfig config;
         private ReliablePacketController packetController;
         private bool congestionControl = false;

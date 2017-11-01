@@ -11,15 +11,19 @@ namespace ReliableNetcode.Utils
 
 		public static T Get()
 		{
-			if (pool.Count > 0)
-				return pool.Dequeue();
+            lock (pool) {
+                if (pool.Count > 0)
+                    return pool.Dequeue();
+            }
 
 			return new T();
 		}
 
 		public static void Return(T val)
 		{
-			pool.Enqueue(val);
+            lock (pool) {
+                pool.Enqueue(val);
+            }
 		}
 	}
 }

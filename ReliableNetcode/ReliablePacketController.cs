@@ -173,6 +173,7 @@ namespace ReliableNetcode
             }
 
             // calculate received bandwidth
+            lock (receivedPackets)
             {
                 uint baseSequence = (uint)((receivedPackets.sequence - config.ReceivedPacketBufferSize + 1) + 0xFFFF);
 
@@ -236,7 +237,8 @@ namespace ReliableNetcode
             ushort ack;
             uint ackBits;
 
-            receivedPackets.GenerateAckBits(out ack, out ackBits);
+            lock( receivedPackets )
+                receivedPackets.GenerateAckBits(out ack, out ackBits);
 
             byte[] transmitData = BufferPool.GetBuffer(16);
             int headerBytes = PacketIO.WriteAckPacket(transmitData, channelID, ack, ackBits);
@@ -255,7 +257,8 @@ namespace ReliableNetcode
             ushort ack;
             uint ackBits;
 
-            receivedPackets.GenerateAckBits(out ack, out ackBits);
+            lock( receivedPackets )
+                receivedPackets.GenerateAckBits(out ack, out ackBits);
 
             SentPacketData sentPacketData = sentPackets.Insert(sequence);
             sentPacketData.time = this.time;
@@ -334,6 +337,12 @@ namespace ReliableNetcode
             if (bufferLength > config.MaxPacketSize)
                 throw new ArgumentOutOfRangeException("Packet is larger than max packet size");
 
+            if (packetData == null)
+                throw new InvalidOperationException("Tried to receive null packet!");
+
+            if (bufferLength > packetData.Length)
+                throw new InvalidOperationException("Buffer length exceeds actual packet length!");
+
             byte prefixByte = packetData[0];
 
             if ((prefixByte & 1) == 0) {
@@ -346,9 +355,15 @@ namespace ReliableNetcode
                 byte channelID;
 
                 int packetHeaderBytes = PacketIO.ReadPacketHeader(packetData, 0, bufferLength, out channelID, out sequence, out ack, out ackBits);
-                bool isStale = !receivedPackets.TestInsert(sequence);
+
+                bool isStale;
+                lock( receivedPackets )
+                    isStale = !receivedPackets.TestInsert(sequence);
 
                 if (!isStale && (prefixByte & 0x80) == 0) {
+                    if (packetHeaderBytes >= bufferLength)
+                        throw new FormatException("Buffer too small for packet data!");
+
                     ByteBuffer tempBuffer = ObjPool<ByteBuffer>.Get();
                     tempBuffer.SetSize(bufferLength - packetHeaderBytes);
                     tempBuffer.BufferCopy(packetData, packetHeaderBytes, 0, tempBuffer.Length);
@@ -357,9 +372,15 @@ namespace ReliableNetcode
                     config.ProcessPacketCallback(sequence, tempBuffer.InternalBuffer, tempBuffer.Length);
 
                     // add to received buffer
-                    ReceivedPacketData receivedPacketData = receivedPackets.Insert(sequence);
-                    receivedPacketData.time = this.time;
-                    receivedPacketData.packetBytes = (uint)(config.PacketHeaderSize + bufferLength);
+                    lock (receivedPackets) {
+                        ReceivedPacketData receivedPacketData = receivedPackets.Insert(sequence);
+
+                        if (receivedPacketData == null)
+                            throw new InvalidOperationException("Failed to insert received packet!");
+
+                        receivedPacketData.time = this.time;
+                        receivedPacketData.packetBytes = (uint)(config.PacketHeaderSize + bufferLength);
+                    }
 
                     ObjPool<ByteBuffer>.Return(tempBuffer);
                 }
