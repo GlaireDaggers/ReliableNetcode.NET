@@ -43,6 +43,11 @@ namespace ReliableNetcode
 		/// </summary>
 		public Action<byte[], int> ReceiveCallback;
 
+		// Index, buffer, bufferLength
+		public Action<uint, byte[], int> TransmitExtendedCallback;
+		public Action<uint, byte[], int> ReceiveExtendedCallback;
+		public uint Index = uint.MaxValue;
+
 		/// <summary>
 		/// Approximate round-trip-time
 		/// </summary>
@@ -81,6 +86,11 @@ namespace ReliableNetcode
 				new UnreliableMessageChannel() { TransmitCallback = this.transmitMessage, ReceiveCallback = this.receiveMessage },
 				new UnreliableOrderedMessageChannel() { TransmitCallback = this.transmitMessage, ReceiveCallback = this.receiveMessage },
 			};
+		}
+
+		public ReliableEndpoint(uint index) : this()
+		{
+			Index = index;
 		}
 
 		/// <summary>
@@ -139,12 +149,20 @@ namespace ReliableNetcode
 
 		protected void receiveMessage(byte[] buffer, int length)
 		{
-			ReceiveCallback(buffer, length);
+			if (ReceiveCallback != null)
+				ReceiveCallback(buffer, length);
+
+			if (ReceiveExtendedCallback != null)
+				ReceiveExtendedCallback(Index, buffer, length);
 		}
 
 		protected void transmitMessage(byte[] buffer, int length)
 		{
-			TransmitCallback(buffer, length);
+			if (TransmitCallback != null)
+				TransmitCallback(buffer, length);
+
+			if (TransmitExtendedCallback != null)
+				TransmitExtendedCallback(Index, buffer, length);
 		}
 	}
 }
