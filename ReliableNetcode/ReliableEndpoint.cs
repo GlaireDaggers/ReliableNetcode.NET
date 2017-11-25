@@ -43,44 +43,54 @@ namespace ReliableNetcode
 		/// </summary>
 		public Action<byte[], int> ReceiveCallback;
 
-        /// <summary>
-        /// Approximate round-trip-time
-        /// </summary>
-        public float RTT => _reliableChannel.RTT;
+		// Index, buffer, bufferLength
+		public Action<uint, byte[], int> TransmitExtendedCallback;
+		public Action<uint, byte[], int> ReceiveExtendedCallback;
+		public uint Index = uint.MaxValue;
 
-        /// <summary>
-        /// Approximate packet loss
-        /// </summary>
-        public float PacketLoss => _reliableChannel.PacketLoss;
+		/// <summary>
+		/// Approximate round-trip-time
+		/// </summary>
+		public float RTT => _reliableChannel.RTT;
 
-        /// <summary>
-        /// Approximate send bandwidth
-        /// </summary>
-        public float SentBandwidthKBPS => _reliableChannel.SentBandwidthKBPS;
+		/// <summary>
+		/// Approximate packet loss
+		/// </summary>
+		public float PacketLoss => _reliableChannel.PacketLoss;
 
-        /// <summary>
-        /// Approximate received bandwidth
-        /// </summary>
-        public float ReceivedBandwidthKBPS => _reliableChannel.ReceivedBandwidthKBPS;
+		/// <summary>
+		/// Approximate send bandwidth
+		/// </summary>
+		public float SentBandwidthKBPS => _reliableChannel.SentBandwidthKBPS;
 
-        private MessageChannel[] messageChannels;
+		/// <summary>
+		/// Approximate received bandwidth
+		/// </summary>
+		public float ReceivedBandwidthKBPS => _reliableChannel.ReceivedBandwidthKBPS;
+
+		private MessageChannel[] messageChannels;
 		private double time = 0.0;
 
-        // the reliable channel
-        private ReliableMessageChannel _reliableChannel;
-        
+		// the reliable channel
+		private ReliableMessageChannel _reliableChannel;
+
 		public ReliableEndpoint()
 		{
 			time = DateTime.Now.GetTotalSeconds();
 
-            _reliableChannel = new ReliableMessageChannel() { TransmitCallback = this.transmitMessage, ReceiveCallback = this.receiveMessage };
-            
-            messageChannels = new MessageChannel[]
+			_reliableChannel = new ReliableMessageChannel() { TransmitCallback = this.transmitMessage, ReceiveCallback = this.receiveMessage };
+
+			messageChannels = new MessageChannel[]
 			{
 				_reliableChannel,
 				new UnreliableMessageChannel() { TransmitCallback = this.transmitMessage, ReceiveCallback = this.receiveMessage },
 				new UnreliableOrderedMessageChannel() { TransmitCallback = this.transmitMessage, ReceiveCallback = this.receiveMessage },
 			};
+		}
+
+		public ReliableEndpoint(uint index) : this()
+		{
+			Index = index;
 		}
 
 		/// <summary>
@@ -136,15 +146,23 @@ namespace ReliableNetcode
 		{
 			messageChannels[(int)qos].SendMessage(buffer, bufferLength);
 		}
-		
+
 		protected void receiveMessage(byte[] buffer, int length)
 		{
-			ReceiveCallback(buffer, length);
+			if (ReceiveCallback != null)
+				ReceiveCallback(buffer, length);
+
+			if (ReceiveExtendedCallback != null)
+				ReceiveExtendedCallback(Index, buffer, length);
 		}
 
 		protected void transmitMessage(byte[] buffer, int length)
 		{
-			TransmitCallback(buffer, length);
+			if (TransmitCallback != null)
+				TransmitCallback(buffer, length);
+
+			if (TransmitExtendedCallback != null)
+				TransmitExtendedCallback(Index, buffer, length);
 		}
 	}
 }
